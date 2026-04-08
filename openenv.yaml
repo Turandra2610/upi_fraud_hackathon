@@ -1,7 +1,8 @@
 version: "1.0"
 name: "UPI-Fraud-Defense-v1"
 type: "reinforcement-learning"
-entry_point: "server/app.py"  # Points to your server
+# FIXED: Points to the root directory where your app.py actually is
+entry_point: "app.py" 
 docker_image: "upi_fraud_agent:latest"
 
 # Define the "Tasks" the grader will test
@@ -17,4 +18,3 @@ tasks:
 grader:
   type: "llm-scoring"
   metrics: ["safety", "efficiency", "explainability"]
-  
