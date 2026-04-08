@@ -4,7 +4,7 @@ emoji: 🛡️
 colorFrom: indigo
 colorTo: indigo
 sdk: docker
-app_port: 7860
+app_port: 5000
 tags:
   - openenv
   - pytorch
@@ -19,7 +19,5 @@ A Reinforcement Learning environment built for the Meta AI Hackathon. This proje
 
 ### 1. Build the Docker Image
 From the project root directory:
-`docker build -t upi_fraud_env .`
-
-### 2. Run the Container
-`docker run -p 7860:7860 upi_fraud_env`
+```bash
+docker build -t upi_fraud_env .
