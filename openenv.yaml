@@ -5,7 +5,7 @@ app_port: 7860
 
 tasks:
   - id: "easy"
-    description: "Classify a single suspicious transaction as fraud, legitimate, or needs-review"
+    description: "Classify a single transaction as fraud, legitimate, or needs-review"
     reward_threshold: 0.8
 
   - id: "medium"
