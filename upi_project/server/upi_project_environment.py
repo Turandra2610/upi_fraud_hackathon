@@ -1,104 +1,37 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the BSD-style license found in the
-# LICENSE file in the root directory of this source tree.
+import gymnasium as gym
+from gymnasium import spaces
+import numpy as np
+import sys
+import os
 
-"""
-Upi Project Environment Implementation.
+# This line is crucial: it tells the server to look for models.py in the folder above
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-A simple test environment that echoes back messages sent to it.
-Perfect for testing HTTP server infrastructure.
-"""
+# Import from your models.py file
+from models import FraudPolicy
 
-from uuid import uuid4
-
-from openenv.core.env_server.interfaces import Environment
-from openenv.core.env_server.types import State
-
-try:
-    from ..models import UpiProjectAction, UpiProjectObservation
-except ImportError:
-    from models import UpiProjectAction, UpiProjectObservation
-
-
-class UpiProjectEnvironment(Environment):
-    """
-    A simple echo environment that echoes back messages.
-
-    This environment is designed for testing the HTTP server infrastructure.
-    It maintains minimal state and simply echoes back whatever message it receives.
-
-    Example:
-        >>> env = UpiProjectEnvironment()
-        >>> obs = env.reset()
-        >>> print(obs.echoed_message)  # "Upi Project environment ready!"
-        >>>
-        >>> obs = env.step(UpiProjectAction(message="Hello"))
-        >>> print(obs.echoed_message)  # "Hello"
-        >>> print(obs.message_length)  # 5
-    """
-
-    # Enable concurrent WebSocket sessions.
-    # Set to True if your environment isolates state between instances.
-    # When True, multiple WebSocket clients can connect simultaneously, each
-    # getting their own environment instance (when using factory mode in app.py).
-    SUPPORTS_CONCURRENT_SESSIONS: bool = True
-
+class UPIFraudEnv(gym.Env):
     def __init__(self):
-        """Initialize the upi_project environment."""
-        self._state = State(episode_id=str(uuid4()), step_count=0)
-        self._reset_count = 0
+        super(UPIFraudEnv, self).__init__()
+        self.action_space = spaces.Discrete(3)
+        self.observation_space = spaces.Box(low=0, high=1, shape=(3,), dtype=np.float32)
 
-    def reset(self) -> UpiProjectObservation:
-        """
-        Reset the environment.
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        self.state = np.random.rand(3).astype(np.float32)
+        return self.state, {}
 
-        Returns:
-            UpiProjectObservation with a ready message
-        """
-        self._state = State(episode_id=str(uuid4()), step_count=0)
-        self._reset_count += 1
-
-        return UpiProjectObservation(
-            echoed_message="Upi Project environment ready!",
-            message_length=0,
-            done=False,
-            reward=0.0,
-        )
-
-    def step(self, action: UpiProjectAction) -> UpiProjectObservation:  # type: ignore[override]
-        """
-        Execute a step in the environment by echoing the message.
-
-        Args:
-            action: UpiProjectAction containing the message to echo
-
-        Returns:
-            UpiProjectObservation with the echoed message and its length
-        """
-        self._state.step_count += 1
-
-        message = action.message
-        length = len(message)
-
-        # Simple reward: longer messages get higher rewards
-        reward = length * 0.1
-
-        return UpiProjectObservation(
-            echoed_message=message,
-            message_length=length,
-            done=False,
-            reward=reward,
-            metadata={"original_message": message, "step": self._state.step_count},
-        )
-
-    @property
-    def state(self) -> State:
-        """
-        Get the current environment state.
-
-        Returns:
-            Current State with episode_id and step_count
-        """
-        return self._state
+    def step(self, action):
+        amount = self.state[0]
+        reward = 0.0
+        
+        # Reward Logic for Hackathon
+        if amount > 0.8: # Likely Fraud
+            reward = 10.0 if action == 2 else -20.0
+        elif amount < 0.2: # Likely Safe
+            reward = 5.0 if action == 0 else -10.0
+        else:
+            reward = 1.0
+            
+        terminated = True 
+        return self.state, reward, terminated, False, {}

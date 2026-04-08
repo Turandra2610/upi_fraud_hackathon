@@ -1,7 +1,20 @@
-spec_version: 1
-name: upi_project
-type: space
-runtime: fastapi
-app: server.app:app
-port: 8000
+version: "1.0"
+name: "UPI-Fraud-Defense-v1"
+type: "reinforcement-learning"
+entry_point: "server/app.py"  # Points to your server
+docker_image: "upi_fraud_agent:latest"
 
+# Define the "Tasks" the grader will test
+tasks:
+  - id: "detect_suspicious_amount"
+    description: "Identify transactions 5x higher than average"
+    reward_threshold: 0.8
+  - id: "prevent_false_positives"
+    description: "Do not block legitimate high-value transactions"
+    reward_threshold: 0.9
+
+# Grader logic (How Meta judges your environment)
+grader:
+  type: "llm-scoring"
+  metrics: ["safety", "efficiency", "explainability"]
+  
