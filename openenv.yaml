@@ -1,20 +1,26 @@
 version: "1.0"
 name: "UPI-Fraud-Defense-v1"
 type: "reinforcement-learning"
-# FIXED: Points to the root directory where your app.py actually is
-entry_point: "app.py" 
-docker_image: "upi_fraud_agent:latest"
+app_port: 7860
 
-# Define the "Tasks" the grader will test
 tasks:
-  - id: "detect_suspicious_amount"
-    description: "Identify transactions 5x higher than average"
+  - id: "easy"
+    description: "Classify a single suspicious transaction as fraud, legitimate, or needs-review"
     reward_threshold: 0.8
-  - id: "prevent_false_positives"
-    description: "Do not block legitimate high-value transactions"
-    reward_threshold: 0.9
 
-# Grader logic (How Meta judges your environment)
+  - id: "medium"
+    description: "Detect mule account pattern from 20 transactions over 7 days"
+    reward_threshold: 0.7
+
+  - id: "hard"
+    description: "Detect organized fraud ring across 100 transactions from 15 accounts"
+    reward_threshold: 0.6
+
 grader:
   type: "llm-scoring"
   metrics: ["safety", "efficiency", "explainability"]
+
+endpoints:
+  reset: "/reset"
+  step: "/step"
+  health: "/health"
