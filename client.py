@@ -1,99 +1,48 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the BSD-style license found in the
-# LICENSE file in the root directory of this source tree.
+"""
+client.py — Python client wrapper for the UPI Fraud environment server.
+Used by inference.py and testing scripts to interact with the environment.
+"""
 
-"""Upi Project Environment Client."""
+import os
+from typing import Any, Dict, Optional
 
-from typing import Dict
-
-from openenv.core import EnvClient
-from openenv.core.client_types import StepResult
-from openenv.core.env_server.types import State
-
-from .models import UpiProjectAction, UpiProjectObservation
+import requests
 
 
-class UpiProjectEnv(
-    EnvClient[UpiProjectAction, UpiProjectObservation, State]
-):
-    """
-    Client for the Upi Project Environment.
+class UPIFraudClient:
+    """HTTP client for the UPI Fraud OpenEnv server."""
 
-    This client maintains a persistent WebSocket connection to the environment server,
-    enabling efficient multi-step interactions with lower latency.
-    Each client instance has its own dedicated environment session on the server.
+    def __init__(self, base_url: Optional[str] = None):
+        self.base_url = (base_url or os.getenv("ENV_BASE_URL", "http://localhost:7860")).rstrip("/")
+        self.session = requests.Session()
+        self.session.headers.update({"Content-Type": "application/json"})
 
-    Example:
-        >>> # Connect to a running server
-        >>> with UpiProjectEnv(base_url="http://localhost:8000") as client:
-        ...     result = client.reset()
-        ...     print(result.observation.echoed_message)
-        ...
-        ...     result = client.step(UpiProjectAction(message="Hello!"))
-        ...     print(result.observation.echoed_message)
+    def health(self) -> Dict[str, Any]:
+        resp = self.session.get(f"{self.base_url}/health", timeout=10)
+        resp.raise_for_status()
+        return resp.json()
 
-    Example with Docker:
-        >>> # Automatically start container and connect
-        >>> client = UpiProjectEnv.from_docker_image("upi_project-env:latest")
-        >>> try:
-        ...     result = client.reset()
-        ...     result = client.step(UpiProjectAction(message="Test"))
-        ... finally:
-        ...     client.close()
-    """
+    def reset(self, task: Optional[str] = None, seed: Optional[int] = None) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {}
+        if task:
+            payload["task"] = task
+        if seed is not None:
+            payload["seed"] = seed
+        resp = self.session.post(f"{self.base_url}/reset", json=payload, timeout=30)
+        resp.raise_for_status()
+        return resp.json()
 
-    def _step_payload(self, action: UpiProjectAction) -> Dict:
-        """
-        Convert UpiProjectAction to JSON payload for step message.
+    def step(self, action: Dict[str, Any]) -> Dict[str, Any]:
+        resp = self.session.post(f"{self.base_url}/step", json={"action": action}, timeout=30)
+        resp.raise_for_status()
+        return resp.json()
 
-        Args:
-            action: UpiProjectAction instance
+    def state(self) -> Dict[str, Any]:
+        resp = self.session.get(f"{self.base_url}/state", timeout=10)
+        resp.raise_for_status()
+        return resp.json()
 
-        Returns:
-            Dictionary representation suitable for JSON encoding
-        """
-        return {
-            "message": action.message,
-        }
-
-    def _parse_result(self, payload: Dict) -> StepResult[UpiProjectObservation]:
-        """
-        Parse server response into StepResult[UpiProjectObservation].
-
-        Args:
-            payload: JSON response data from server
-
-        Returns:
-            StepResult with UpiProjectObservation
-        """
-        obs_data = payload.get("observation", {})
-        observation = UpiProjectObservation(
-            echoed_message=obs_data.get("echoed_message", ""),
-            message_length=obs_data.get("message_length", 0),
-            done=payload.get("done", False),
-            reward=payload.get("reward"),
-            metadata=obs_data.get("metadata", {}),
-        )
-
-        return StepResult(
-            observation=observation,
-            reward=payload.get("reward"),
-            done=payload.get("done", False),
-        )
-
-    def _parse_state(self, payload: Dict) -> State:
-        """
-        Parse server response into State object.
-
-        Args:
-            payload: JSON response from state request
-
-        Returns:
-            State object with episode_id and step_count
-        """
-        return State(
-            episode_id=payload.get("episode_id"),
-            step_count=payload.get("step_count", 0),
-        )
+    def tasks(self) -> Dict[str, Any]:
+        resp = self.session.get(f"{self.base_url}/tasks", timeout=10)
+        resp.raise_for_status()
+        return resp.json()
