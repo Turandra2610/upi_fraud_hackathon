@@ -1,14 +1,32 @@
-FROM ghcr.io/meta-pytorch/openenv-base:latest
+FROM python:3.11-slim
 
-RUN useradd -m -u 1000 user
-USER user
-ENV HOME=/home/user \
-    PATH=/home/user/.local/bin:$PATH
+# Set working directory
+WORKDIR /app
 
-WORKDIR $HOME/app
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY --chown=user . .
+# Copy requirements first (layer cache)
+COPY requirements.txt .
 
-RUN pip install --no-cache-dir numpy
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860"]
+# Copy all project files
+COPY . .
+
+# Create server __init__.py if missing
+RUN touch server/__init__.py
+
+# Expose port 7860 (HuggingFace Spaces default)
+EXPOSE 7860
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:7860/health || exit 1
+
+# Start the FastAPI server
+CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860", "--workers", "1"]
