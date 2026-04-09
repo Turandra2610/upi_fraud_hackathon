@@ -1,26 +1,54 @@
-version: "1.0"
-name: "UPI-Fraud-Defense-v1"
-type: "reinforcement-learning"
-app_port: 7860
+name: upi-fraud-investigator
+version: "1.0.0"
+description: >
+  UPI Fraud Pattern Investigator — An RL environment where an agent investigates
+  UPI transaction streams to detect fraud patterns unique to Indian digital payments.
+  India processes 14 billion UPI transactions/month; this environment simulates
+  real fraud detection scenarios across three difficulty levels.
+
+server:
+  url: http://localhost:7860
 
 tasks:
-  - id: "easy"
-    description: "Classify a single transaction as fraud, legitimate, or needs-review"
-    reward_threshold: 0.8
+  - name: single-transaction-classify
+    description: >
+      EASY: Given one suspicious UPI transaction with metadata,
+      classify it as fraud / legitimate / needs-review.
+    difficulty: easy
+    max_steps: 5
 
-  - id: "medium"
-    description: "Detect mule account pattern from 20 transactions over 7 days"
-    reward_threshold: 0.7
+  - name: account-compromise-detect
+    description: >
+      MEDIUM: Given 20 transactions from one account over 7 days,
+      detect if the account has been compromised (mule account pattern).
+    difficulty: medium
+    max_steps: 10
 
-  - id: "hard"
-    description: "Detect organized fraud ring across 100 transactions from 15 accounts"
-    reward_threshold: 0.6
+  - name: fraud-ring-investigate
+    description: >
+      HARD: Given 100 transactions across 15 accounts, detect an organized
+      fraud ring — map the money flow, identify the originator account,
+      and flag the cash-out endpoint.
+    difficulty: hard
+    max_steps: 20
 
-grader:
-  type: "llm-scoring"
-  metrics: ["safety", "efficiency", "explainability"]
+observation_space:
+  type: object
+  description: >
+    Structured UPI transaction data including sender/receiver VPA,
+    amount, timestamp, device fingerprint, location, merchant category,
+    and behavioral metadata.
 
-endpoints:
-  reset: "/reset"
-  step: "/step"
-  health: "/health"
+action_space:
+  type: object
+  description: >
+    Agent submits a classification decision with supporting evidence.
+    Fields: decision (fraud|legitimate|needs-review), confidence (0.0-1.0),
+    flagged_accounts (list), fraud_type (string), reasoning (string).
+
+reward:
+  description: >
+    Balanced reward penalizing both false positives (blocking real users)
+    and false negatives (missing fraud). Perfect detection = 1.0.
+    Partial credit for correct direction with wrong confidence.
+  range: [0.0, 1.0]
